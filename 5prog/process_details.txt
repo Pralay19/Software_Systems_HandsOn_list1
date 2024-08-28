@@ -1,0 +1,11 @@
+PROCESS ID:90488
+
+FILE DESCRIPTOR:
+lrwx------ 1 pralaydsaw pralaydsaw 64 Aug 28 18:46 0 -> /dev/pts/0
+lrwx------ 1 pralaydsaw pralaydsaw 64 Aug 28 18:46 1 -> /dev/pts/0
+lrwx------ 1 pralaydsaw pralaydsaw 64 Aug 28 18:46 2 -> /dev/pts/0
+lr-x------ 1 pralaydsaw pralaydsaw 64 Aug 28 18:46 3 -> /home/iiitb/ss/5prog/file1
+lr-x------ 1 pralaydsaw pralaydsaw 64 Aug 28 18:46 4 -> /home/iiitb/ss/5prog/file2
+lr-x------ 1 pralaydsaw pralaydsaw 64 Aug 28 18:46 5 -> /home/iiitb/ss/5prog/file3
+lr-x------ 1 pralaydsaw pralaydsaw 64 Aug 28 18:46 6 -> /home/iiitb/ss/5prog/file4
+lr-x------ 1 pralaydsaw pralaydsaw 64 Aug 28 18:46 7 -> /home/iiitb/ss/5prog/file5
