@@ -1,0 +1,2 @@
+Parent process (PID: 204426) is terminating.
+Child process (PID: 204427) is now an orphan, adopted by init/systemd. Parent PID: 196634
