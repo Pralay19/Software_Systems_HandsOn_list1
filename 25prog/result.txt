@@ -1,0 +1,6 @@
+First child process (PID: 204685)
+Second child process (PID: 204686)
+Parent process waiting for the second child (PID: 204686)
+Third child process (PID: 204687)
+Second child exited with status: 0
+Parent process finished

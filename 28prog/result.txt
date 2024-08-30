@@ -1,0 +1,2 @@
+Maximum real-time priority: 99
+Minimum real-time priority: 1
