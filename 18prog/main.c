@@ -1,148 +1,145 @@
-#include <stdio.h>    
-#include <fcntl.h>    
-#include <unistd.h>   
-#include <stdlib.h>   
-#include <time.h>     
-
-struct Record {
-int id;
-int score;
+#include <stdio.h>
+#include <stdlib.h>
+#include <string.h>
+#include <unistd.h>
+#include <fcntl.h>
+#include<sys/file.h>
+// Define the structure for train information
+struct Train {
+char train_no[10];
+char train_name[100];
+int tickets;
 };
 
-int acquire_read_lock(int record_num);
-int acquire_write_lock(int record_num);
 
-int acquire_read_lock(int record_num) {
-int file_desc = open("record_file.txt", O_RDONLY);
-if (file_desc == -1) {
-perror("Failed to open file");
-return 1;
+
+void initialize_train_data() {
+FILE *file = fopen("train_data", "wb");
+if (file == NULL) {
+perror("Error opening file");
+exit(EXIT_FAILURE);
 }
 
-struct Record rec;
+while (1) {
+struct Train train;
 
-lseek(file_desc, (record_num - 1) * sizeof(struct Record), SEEK_SET);
-read(file_desc, &rec, sizeof(struct Record));
-printf("ID: %d \t Score: %d \n", rec.id, rec.score);
-
-struct flock lock;
-lock.l_type = F_RDLCK;
-lock.l_whence = SEEK_SET;
-lock.l_start = (record_num - 1) * sizeof(struct Record);
-lock.l_len = sizeof(struct Record);
-
-printf("Attempting to acquire read lock on record %d \n", rec.id);
-fcntl(file_desc, F_SETLKW, &lock);
-
-printf("Read lock acquired on record %d \n", rec.id);
-printf("Press Enter to release the lock\n");
-
-getchar();
-getchar();
-
-lock.l_type = F_UNLCK;
-fcntl(file_desc, F_SETLKW, &lock);
-printf("Released read lock\n");
-
-close(file_desc);
-return 0;
+printf("Enter train number (type 'done' to finish) : ");
+scanf("%s", train.train_no);
+if (strcmp(train.train_no, "done") == 0) {
+    break;
 }
 
-int acquire_write_lock(int record_num) {
-int file_desc = open("record_file.txt", O_RDWR);
-if (file_desc == -1) {
-perror("Failed to open file");
-return 1;
+printf("Enter name for train %s: ", train.train_no);
+scanf("%s", train.train_name);
+train.tickets=0;
+
+fwrite(&train, sizeof(struct Train), 1, file);
 }
 
-struct Record rec;
-
-lseek(file_desc, (record_num - 1) * sizeof(struct Record), SEEK_SET);
-read(file_desc, &rec, sizeof(struct Record));
-printf("ID: %d \n", rec.id);
-printf("Current Score: %d\n", rec.score);
-
-struct flock lock;
-lock.l_type = F_WRLCK;
-lock.l_whence = SEEK_SET;
-lock.l_start = (record_num - 1) * sizeof(struct Record);
-lock.l_len = sizeof(struct Record);
-
-printf("Attempting to acquire write lock on record %d \n", rec.id);
-if (fcntl(file_desc, F_SETLKW, &lock) < 0) {
-perror("Locking error");
-return 1;
+fclose(file);
+printf("\nTrain data has been initialized and saved.\n");
 }
 
-printf("Write lock acquired on record %d \n", rec.id);
-printf("Enter new score: ");
-scanf("%d", &rec.score);
+void load_train_data() {
+FILE *file = fopen("train_data", "rb");
+if (file == NULL) {
+perror("Error opening file");
+exit(EXIT_FAILURE);
+}
 
-lseek(file_desc, -1 * sizeof(struct Record), SEEK_CUR);
-write(file_desc, &rec, sizeof(struct Record));
+struct Train train;
+printf("Train Data:\n");
+while (fread(&train, sizeof(struct Train), 1, file)) {
+printf("Train No: %s, Name: %s , Total Tickets: %d\n",
+       train.train_no, train.train_name,train.tickets);
+}
 
-printf("Updated ID: %d \n", rec.id);
-printf("Updated Score: %d\n", rec.score);
+fclose(file);
+}
 
-printf("Press Enter to release the lock\n");
-getchar();
-getchar();
+void book_train() {
+int fd = open("train_data", O_RDWR);
+if (fd == -1) {
+perror("Error opening file");
+exit(EXIT_FAILURE);
+}
 
-lock.l_type = F_UNLCK;
-fcntl(file_desc, F_SETLKW, &lock);
-printf("Released write lock\n");
+// Lock the file
+if (flock(fd, LOCK_EX) == -1) {
+perror("Error locking file");
+close(fd);
+exit(EXIT_FAILURE);
+}
 
-close(file_desc);
-return 0;
+struct Train train;
+int found = 0;
+
+printf("Enter the train number you want to book: ");
+char train_no[10];
+scanf("%s", train_no);
+
+FILE *file = fdopen(fd, "r+b");
+while (fread(&train, sizeof(struct Train), 1, file)) {
+if (strcmp(train.train_no, train_no) == 0) {
+    printf("Booking confirmed for Train: %s\n",
+           train.train_name);
+    train.tickets+=1;
+    fseek(file, -sizeof(struct Train), SEEK_CUR);
+
+    // Update the record with the new number of tickets booked
+    fwrite(&train, sizeof(struct Train), 1, file);
+    fflush(file);  // Ensure data is written to disk
+    found = 1;
+    break;
+}
+}
+
+if (!found) {
+printf("Train number %s does not exist.\n", train_no);
+}
+
+// Unlock the file
+if (flock(fd, LOCK_UN) == -1) {
+perror("Error unlocking file");
+close(fd);
+exit(EXIT_FAILURE);
+}
+
+fclose(file);
+close(fd);
 }
 
 int main() {
-int file_desc = open("record_file.txt", O_RDWR | O_CREAT | O_TRUNC, 0666);
-if (file_desc == -1) {
-perror("Error creating file");
-return 1;
+int choice;
+
+// Check if train data exists, if not, initialize it
+if (access("train_data", F_OK) == -1) {
+printf("No train data found. Let's initialize the data.\n");
+initialize_train_data();
 }
 
-int num_records = 3;
-printf("Enter the number of records to create: ");
-scanf("%d", &num_records);
-srand(time(NULL));
+while (1) {
+printf("\nOptions:\n");
+printf("1. Book a train\n");
+printf("2. View train data\n");
+printf("3. Exit\n");
+printf("Enter your choice: ");
+scanf("%d", &choice);
 
-struct Record rec;
-for (int i = 0; i < num_records; i++) {
-rec.id = 1000 + i;
-rec.score = rand() % 100;
-write(file_desc, &rec, sizeof(struct Record));
+switch (choice) {
+    case 1:
+        book_train();
+        break;
+    case 2:
+        load_train_data();
+        break;
+    case 3:
+        printf("Exiting the program.\n");
+        exit(0);
+    default:
+        printf("Invalid choice. Please try again.\n");
 }
-
-lseek(file_desc, 0, SEEK_SET);
-printf("Records:\n");
-for (int i = 0; i < num_records; i++) {
-read(file_desc, &rec, sizeof(struct Record));
-printf("ID: %d\tScore: %d\n", rec.id, rec.score);
 }
-
-lseek(file_desc, 0, SEEK_SET);
-
-int record_num, option;
-printf("Enter the record number to lock: ");
-scanf("%d", &record_num);
-if (record_num <= 0 || record_num > num_records) {
-printf("Invalid record number\n");
-return 1;
-}
-
-printf("Select lock type: Read (1) Write (2): ");
-scanf("%d", &option);
-if (option == 1) {
-acquire_read_lock(record_num);
-} else if (option == 2) {
-acquire_write_lock(record_num);
-} else {
-printf("Invalid choice\n");
-}
-
-close(file_desc);
 
 return 0;
 }
